@@ -13,7 +13,7 @@ import os
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # -----------------------
-# Download weights (auto from GitHub Release)
+# Weights download
 # -----------------------
 WEIGHT_URL = "https://github.com/Mubashir214/Conditional-GAN/releases/download/v1.0.0/cuhk_best_generator.pth"
 WEIGHT_PATH = "best_generator.pth"
@@ -23,12 +23,25 @@ if not os.path.exists(WEIGHT_PATH):
     urllib.request.urlretrieve(WEIGHT_URL, WEIGHT_PATH)
 
 # -----------------------
-# Load Model
+# LOAD MODEL (FIX HERE)
 # -----------------------
 @st.cache_resource
 def load_model():
     model = Generator().to(device)
-    model.load_state_dict(torch.load(WEIGHT_PATH, map_location=device))
+
+    state_dict = torch.load(WEIGHT_PATH, map_location=device)
+
+    # remove "module." prefix
+    cleaned_state_dict = {}
+    for k, v in state_dict.items():
+        new_key = k.replace("module.", "")
+        cleaned_state_dict[new_key] = v
+
+    try:
+        model.load_state_dict(cleaned_state_dict, strict=True)
+    except RuntimeError:
+        model.load_state_dict(cleaned_state_dict, strict=False)
+
     model.eval()
     return model
 
@@ -58,7 +71,6 @@ def process_image(img):
 # UI
 # -----------------------
 st.title("🎨 Pix2Pix Sketch → Color Generator")
-st.write("Upload a sketch image and get AI-generated colored output.")
 
 uploaded_file = st.file_uploader("Upload Sketch Image", type=["png", "jpg", "jpeg"])
 
@@ -69,4 +81,4 @@ if uploaded_file:
 
     result = process_image(image)
 
-    st.image(result, caption="Generated Color Image", use_container_width=True)
+    st.image(result, caption="Generated Image", use_container_width=True)
